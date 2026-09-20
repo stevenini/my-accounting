@@ -25,8 +25,6 @@
         input[type="number"] { flex: 1; }
         button { background: #2563eb; color: #fff; border: none; cursor: pointer; font-weight: bold; }
         button:hover { background: #1d4ed8; }
-        .sync-btn { width: 100%; background: #059669; margin-bottom: 15px; display: none; }
-        .sync-btn:hover { background: #047857; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
         th { color: #666; font-weight: normal; }
@@ -55,9 +53,6 @@
             <div class="stat-amount">¥ <span id="yearAmount">0.00</span></div>
         </div>
     </div>
-
-    <!-- 旧数据同步提示按钮 -->
-    <button id="syncNotice" class="sync-btn" onclick="syncLocalDataToCloud()">发现旧版本地数据，点击一键同步至云端</button>
 
     <!-- 月份筛选 -->
     <div class="filter-section">
@@ -90,39 +85,51 @@
 </div>
 
 <script>
-    // 1. 初始化 Firebase (保持你的配置不变)
+    // 1. 初始化 Firebase
     const firebaseConfig = {
         databaseURL: "https://my-accounting-69e9fe-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
     firebase.initializeApp(firebaseConfig);
+
+    // 强制开启长轮询，防 VPN 网络环境下 WebSocket 被拦截
+    firebase.database().INTERNAL.forceLongPolling();
+
     const db = firebase.database();
-    const recordsRef = db.ref('accounting_records');
+    // 自动适配根节点路径
+    const recordsRef = db.ref('/');
 
-    let rawData = {}; // 存储云端推送的原始数据
+    let rawData = {}; 
 
-    // 页面元素
     const monthPicker = document.getElementById('monthPicker');
     const dateInput = document.getElementById('dateInput');
     const recordList = document.getElementById('recordList');
 
-    // 默认设置今天日期与当前月份
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
     monthPicker.value = today.substring(0, 7);
 
-    // 检查是否有本地旧数据需要迁移
-    checkLocalStorage();
-
-    // 2. 监听云端 Realtime Database 数据变动
+    // 2. 监听云端变动
     recordsRef.on('value', (snapshot) => {
         rawData = snapshot.val() || {};
         render();
+    }, (error) => {
+        console.error("读取数据库失败:", error);
+        recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">数据加载失败，请检查网络或权限限制</td></tr>';
     });
 
-    // 月份筛选变更事件
     monthPicker.addEventListener('change', render);
 
-    // 3. 渲染页面核心逻辑
+    // 3. 安全字符转义函数（移至头部保障可用）
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    // 4. 渲染页面逻辑
     function render() {
         recordList.innerHTML = '';
         
@@ -138,17 +145,24 @@
 
         const recordArray = [];
         for (let key in rawData) {
-            recordArray.push({
-                id: key,
-                ...rawData[key]
-            });
+            // 过滤非账目数据的杂项节点
+            if (typeof rawData[key] === 'object' && rawData[key] !== null && rawData[key].amount) {
+                recordArray.push({
+                    id: key,
+                    ...rawData[key]
+                });
+            }
         }
 
         if (recordArray.length === 0) {
             recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">暂无云端记账记录</td></tr>';
         } else {
-            // 按日期倒序排列
-            recordArray.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // 按日期倒序，日期相同按创建时间倒序
+            recordArray.sort((a, b) => {
+                const dateDiff = new Date(b.date) - new Date(a.date);
+                if (dateDiff !== 0) return dateDiff;
+                return (b.createdAt || 0) - (a.createdAt || 0);
+            });
 
             recordArray.forEach((item) => {
                 const amount = parseFloat(item.amount) || 0;
@@ -156,19 +170,17 @@
                 const itemYearMonth = itemDate.substring(0, 7);
                 const itemYear = itemDate.substring(0, 4);
 
-                // 全局总额：无条件累加所有项，不受筛选条件限制
+                // 无条件计算全量总金额
                 grandTotal += amount;
 
-                // 按选中的年月累加
                 if (itemYearMonth === selectedYearMonth) monthTotal += amount;
                 if (itemYear === selectedYear) yearTotal += amount;
 
-                // 列表只展示当前选定月份的数据
                 if (itemYearMonth === selectedYearMonth) {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${itemDate}</td>
-                        <td>${escapeHtml(item.desc || '')}</td>
+                        <td>${escapeHtml(item.desc)}</td>
                         <td class="amount-col">¥ ${amount.toFixed(2)}</td>
                         <td class="action-col">
                             <button class="delete-btn" onclick="deleteRecord('${item.id}')">删除</button>
@@ -183,13 +195,12 @@
             }
         }
 
-        // 渲染三个汇总卡片
         document.getElementById('totalAmount').textContent = grandTotal.toFixed(2);
         document.getElementById('monthAmount').textContent = monthTotal.toFixed(2);
         document.getElementById('yearAmount').textContent = yearTotal.toFixed(2);
     }
 
-    // 4. 新增记账（安全使用 push 追加，防覆盖）
+    // 5. 新增记录（push 追加）
     function addRecord() {
         const date = dateInput.value;
         const desc = document.getElementById('descInput').value.trim();
@@ -200,7 +211,6 @@
             return;
         }
 
-        // 使用 push 生成独立节点
         recordsRef.push({
             date: date,
             desc: desc,
@@ -214,58 +224,11 @@
         });
     }
 
-    // 5. 删除单条记账
+    // 6. 删除记录
     function deleteRecord(id) {
         if (confirm('确定要删除这笔记录吗？')) {
-            db.ref('accounting_records/' + id).remove();
+            db.ref('/' + id).remove();
         }
-    }
-
-    // 6. 检查本地旧数据
-    function checkLocalStorage() {
-        const localData = localStorage.getItem('my_accounting_data');
-        if (localData) {
-            try {
-                const records = JSON.parse(localData);
-                if (Array.isArray(records) && records.length > 0) {
-                    document.getElementById('syncNotice').style.display = 'block';
-                }
-            } catch (e) {}
-        }
-    }
-
-    // 7. 一键增量迁移旧数据（安全异步追加）
-    function syncLocalDataToCloud() {
-        const localData = localStorage.getItem('my_accounting_data');
-        if (!localData) return;
-
-        try {
-            const records = JSON.parse(localData);
-            if (Array.isArray(records) && records.length > 0) {
-                // 使用 Promise.all 确保所有数据全部 push 成功
-                const promises = records.map(item => recordsRef.push({
-                    date: item.date,
-                    desc: item.desc,
-                    amount: parseFloat(item.amount) || 0,
-                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                }));
-
-                Promise.all(promises).then(() => {
-                    localStorage.removeItem('my_accounting_data');
-                    document.getElementById('syncNotice').style.display = 'none';
-                    alert('旧数据已安全同步至云端！');
-                }).catch(err => {
-                    alert('同步出错，请重试: ' + err.message);
-                });
-            }
-        } catch (e) {
-            alert('解析本地数据失败');
-        }
-    }
-
-    // 辅助转义函数
-    function escapeHtml(str) {
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 </script>
 </body>
