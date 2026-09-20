@@ -91,8 +91,7 @@
     };
     firebase.initializeApp(firebaseConfig);
 
-    // 强制开启长轮询，防 VPN 网络环境下 WebSocket 被拦截
-    firebase.database().INTERNAL.forceLongPolling();
+    
 
     const db = firebase.database();
     // 自动适配根节点路径
