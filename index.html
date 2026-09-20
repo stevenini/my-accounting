@@ -96,13 +96,16 @@
     }
 
     // 1. 初始化 Firebase (v8 语法)
-    const firebaseConfig = {
-        databaseURL: "https://my-accounting-69e9fe-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
-
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+   const firebaseConfig = {
+  apiKey: "AIzaSyBiF_nX1y87y2ItH0EblBLL9j5BOlOQOkk",
+  authDomain: "my-accounting-6e9fe.firebaseapp.com",
+  databaseURL: "https://my-accounting-6e9fe-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "my-accounting-6e9fe",
+  storageBucket: "my-accounting-6e9fe.firebasestorage.app",
+  messagingSenderId: "157174952439",
+  appId: "1:157174952439:web:7d3a445957af857f647ef2",
+  measurementId: "G-9WGWV6F974"
+};
 
     const db = firebase.database();
     // 绑定数据库根节点
