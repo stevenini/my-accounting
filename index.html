@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>极简云记账</title>
-    <!-- 引入 Firebase Web SDK v8 -->
+    <!-- 引入稳定版 Firebase Web SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -30,8 +30,8 @@
         th { color: #666; font-weight: normal; }
         .amount-col { text-align: right; font-weight: bold; }
         .action-col { text-align: center; width: 60px; }
-        .delete-btn { background: none; color: #ef4444; padding: 0; font-size: 13px; }
-        .delete-btn:hover { text-decoration: underline; background: none; }
+        .delete-btn { background: none; color: #ef4444; padding: 0; font-size: 13px; cursor: pointer; border: none; }
+        .delete-btn:hover { text-decoration: underline; }
         .empty-tip { text-align: center; color: #999; padding: 30px 0; }
     </style>
 </head>
@@ -85,16 +85,27 @@
 </div>
 
 <script>
-    // 1. 初始化 Firebase
+    // 字符转义工具函数
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    // 1. 初始化 Firebase (v8 语法)
     const firebaseConfig = {
         databaseURL: "https://my-accounting-69e9fe-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-    firebase.initializeApp(firebaseConfig);
 
-    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
 
     const db = firebase.database();
-    // 自动适配根节点路径
+    // 绑定数据库根节点
     const recordsRef = db.ref('/');
 
     let rawData = {}; 
@@ -113,22 +124,12 @@
         render();
     }, (error) => {
         console.error("读取数据库失败:", error);
-        recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">数据加载失败，请检查网络或权限限制</td></tr>';
+        recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">数据加载失败，请检查网络权限</td></tr>';
     });
 
     monthPicker.addEventListener('change', render);
 
-    // 3. 安全字符转义函数（移至头部保障可用）
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
-    // 4. 渲染页面逻辑
+    // 3. 渲染页面逻辑
     function render() {
         recordList.innerHTML = '';
         
@@ -144,7 +145,7 @@
 
         const recordArray = [];
         for (let key in rawData) {
-            // 过滤非账目数据的杂项节点
+            // 过滤符合记账格式的有效节点
             if (typeof rawData[key] === 'object' && rawData[key] !== null && rawData[key].amount) {
                 recordArray.push({
                     id: key,
@@ -156,7 +157,7 @@
         if (recordArray.length === 0) {
             recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">暂无云端记账记录</td></tr>';
         } else {
-            // 按日期倒序，日期相同按创建时间倒序
+            // 按日期倒序，同日期按创建时间倒序
             recordArray.sort((a, b) => {
                 const dateDiff = new Date(b.date) - new Date(a.date);
                 if (dateDiff !== 0) return dateDiff;
@@ -169,7 +170,7 @@
                 const itemYearMonth = itemDate.substring(0, 7);
                 const itemYear = itemDate.substring(0, 4);
 
-                // 无条件计算全量总金额
+                // 无条件统计全量总额
                 grandTotal += amount;
 
                 if (itemYearMonth === selectedYearMonth) monthTotal += amount;
@@ -199,7 +200,7 @@
         document.getElementById('yearAmount').textContent = yearTotal.toFixed(2);
     }
 
-    // 5. 新增记录（push 追加）
+    // 4. 新增记录（安全追加）
     function addRecord() {
         const date = dateInput.value;
         const desc = document.getElementById('descInput').value.trim();
@@ -223,7 +224,7 @@
         });
     }
 
-    // 6. 删除记录
+    // 5. 删除记录
     function deleteRecord(id) {
         if (confirm('确定要删除这笔记录吗？')) {
             db.ref('/' + id).remove();
