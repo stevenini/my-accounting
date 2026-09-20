@@ -3,209 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>简易记账 - 云同步版</title>
+    <title>极简云记账</title>
+    <!-- 引入 Firebase Web SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --accent-color: #2563eb;
-            --text-color: #1e293b;
-            --border-color: #e2e8f0;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 600px;
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            padding: 24px;
-            box-sizing: border-box;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .summary-card {
-            background: var(--accent-color);
-            color: white;
-            padding: 16px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        .summary-title {
-            font-size: 0.75rem;
-            opacity: 0.9;
-            margin-bottom: 4px;
-        }
-
-        .summary-amount {
-            font-size: 1.25rem;
-            font-weight: bold;
-        }
-
-        .filter-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            align-items: center;
-            background: #f8fafc;
-            padding: 10px;
-            border-radius: 6px;
-        }
-
-        .filter-section label {
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-
-        .input-form {
-            display: grid;
-            grid-template-columns: 140px 1fr 100px 80px;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 480px) {
-            .input-form {
-                grid-template-columns: 1fr;
-            }
-            .summary-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        input, select, button {
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 0.9rem;
-            outline: none;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--accent-color);
-        }
-
-        button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .migrate-btn {
-            background-color: #10b981;
-            margin-bottom: 15px;
-            width: 100%;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: #f8fafc;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-
-        .amount-col {
-            text-align: right;
-            font-family: monospace;
-            font-size: 1rem;
-        }
-
-        .action-col {
-            text-align: center;
-            width: 50px;
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            padding: 4px 8px;
-            font-size: 0.8rem;
-        }
-
-        .empty-tip {
-            text-align: center;
-            color: #94a3b8;
-            padding: 20px;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f9; color: #333; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { padding: 15px 10px; border-radius: 8px; text-align: center; color: #fff; }
+        .card-blue { background: #2563eb; }
+        .card-green { background: #059669; }
+        .card-orange { background: #d97706; }
+        .stat-title { font-size: 12px; opacity: 0.9; margin-bottom: 5px; }
+        .stat-amount { font-size: 18px; font-weight: bold; }
+        .filter-section, .input-section { display: flex; gap: 10px; margin-bottom: 15px; }
+        input, button { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        input[type="date"] { flex: 1; }
+        input[type="text"] { flex: 2; }
+        input[type="number"] { flex: 1; }
+        button { background: #2563eb; color: #fff; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .sync-btn { width: 100%; background: #059669; margin-bottom: 15px; display: none; }
+        .sync-btn:hover { background: #047857; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { color: #666; font-weight: normal; }
+        .amount-col { text-align: right; font-weight: bold; }
+        .action-col { text-align: center; width: 60px; }
+        .delete-btn { background: none; color: #ef4444; padding: 0; font-size: 13px; }
+        .delete-btn:hover { text-decoration: underline; background: none; }
+        .empty-tip { text-align: center; color: #999; padding: 30px 0; }
     </style>
-
-    <!-- 引入 Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
 <div class="container">
-    <button id="migrateBtn" class="migrate-btn" onclick="migrateLocalData()" style="display:none;">
-        发现旧版本地数据，点击一键同步至云端
-    </button>
-
-    <!-- 汇总数据区块（含当前、月结、年结） -->
-    <div class="summary-grid">
-        <div class="summary-card">
-            <div class="summary-title">当下总支出</div>
-            <div class="summary-amount">¥ <span id="totalAmount">0.00</span></div>
+    <!-- 顶栏数据统计 -->
+    <div class="stats-grid">
+        <div class="stat-card card-blue">
+            <div class="stat-title">当下总支出</div>
+            <div class="stat-amount">¥ <span id="totalAmount">0.00</span></div>
         </div>
-        <div class="summary-card" style="background-color: #059669;">
-            <div class="summary-title"><span id="monthTitle">本月</span>总支出</div>
-            <div class="summary-amount">¥ <span id="monthAmount">0.00</span></div>
+        <div class="stat-card card-green">
+            <div class="stat-title"><span id="monthTitle">2026-09</span>总支出</div>
+            <div class="stat-amount">¥ <span id="monthAmount">0.00</span></div>
         </div>
-        <div class="summary-card" style="background-color: #d97706;">
-            <div class="summary-title"><span id="yearTitle">今年</span>总支出</div>
-            <div class="summary-amount">¥ <span id="yearAmount">0.00</span></div>
+        <div class="stat-card card-orange">
+            <div class="stat-title"><span id="yearTitle">2026年</span>总支出</div>
+            <div class="stat-amount">¥ <span id="yearAmount">0.00</span></div>
         </div>
     </div>
 
-    <!-- 月结/年结 统计筛选器 -->
+    <!-- 旧数据同步提示按钮 -->
+    <button id="syncNotice" class="sync-btn" onclick="syncLocalDataToCloud()">发现旧版本地数据，点击一键同步至云端</button>
+
+    <!-- 月份筛选 -->
     <div class="filter-section">
-        <label>选择统计时间：</label>
+        <label style="line-height: 38px; font-size: 14px; color: #666;">选择统计时间：</label>
         <input type="month" id="monthPicker">
     </div>
 
-    <form class="input-form" id="recordForm">
-        <input type="date" id="dateInput" required>
-        <input type="text" id="descInput" placeholder="花费说明" required>
-        <input type="number" id="amountInput" placeholder="金额" step="0.01" min="0" required>
-        <button type="submit">记一笔</button>
-    </form>
+    <!-- 记账输入框 -->
+    <div class="input-section">
+        <input type="date" id="dateInput">
+        <input type="text" id="descInput" placeholder="花费说明">
+        <input type="number" id="amountInput" placeholder="金额" step="0.01">
+        <button onclick="addRecord()">记一笔</button>
+    </div>
 
+    <!-- 账目列表 -->
     <table>
         <thead>
             <tr>
@@ -215,68 +83,58 @@
                 <th style="text-align: center;">操作</th>
             </tr>
         </thead>
-        <tbody id="recordList"></tbody>
+        <tbody id="recordList">
+            <tr><td colspan="4" class="empty-tip">加载中...</td></tr>
+        </tbody>
     </table>
 </div>
 
 <script>
-    // 已根据截图填入你的 Firebase 真实配置
+    // 1. 初始化 Firebase (保持你的配置不变)
     const firebaseConfig = {
-        apiKey: "AIzaSyBiF_nX1y87y2ItH0EbLBLl9j5BOl0Q0kk",
-        authDomain: "my-accounting-6e9fe.firebaseapp.com",
-        databaseURL: "https://my-accounting-6e9fe-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "my-accounting-6e9fe",
-        storageBucket: "my-accounting-6e9fe.firebasestorage.app",
-        messagingSenderId: "157174952439",
-        appId: "1:157174952439:web:7d3a445957af857f647ef2"
+        databaseURL: "https://my-accounting-69e9fe-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-
-    // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const recordsRef = db.ref('accounting_records');
 
-    const recordForm = document.getElementById('recordForm');
-    const dateInput = document.getElementById('dateInput');
-    const descInput = document.getElementById('descInput');
-    const amountInput = document.getElementById('amountInput');
-    const recordList = document.getElementById('recordList');
+    let rawData = {}; // 存储云端推送的原始数据
+
+    // 页面元素
     const monthPicker = document.getElementById('monthPicker');
-    const migrateBtn = document.getElementById('migrateBtn');
+    const dateInput = document.getElementById('dateInput');
+    const recordList = document.getElementById('recordList');
 
-    let rawData = {}; 
+    // 默认设置今天日期与当前月份
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+    monthPicker.value = today.substring(0, 7);
 
-    // 初始化默认日期与筛选时间
-    const now = new Date();
-    dateInput.value = now.toISOString().split('T')[0];
-    monthPicker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // 检查是否有本地旧数据需要迁移
+    checkLocalStorage();
 
-    // 检查是否有旧版的 localStorage 数据
-    const localData = localStorage.getItem('accounting_records');
-    if (localData && JSON.parse(localData).length > 0) {
-        migrateBtn.style.display = 'block';
-    }
-
-    // 监听云端数据库变动
+    // 2. 监听云端 Realtime Database 数据变动
     recordsRef.on('value', (snapshot) => {
         rawData = snapshot.val() || {};
         render();
     });
 
+    // 月份筛选变更事件
     monthPicker.addEventListener('change', render);
 
+    // 3. 渲染页面核心逻辑
     function render() {
         recordList.innerHTML = '';
         
-        let grandTotal = 0;
+        let grandTotal = 0; 
         let monthTotal = 0;
         let yearTotal = 0;
 
         const selectedYearMonth = monthPicker.value; 
-        const selectedYear = selectedYearMonth.split('-')[0]; 
+        const selectedYear = selectedYearMonth ? selectedYearMonth.split('-')[0] : ''; 
 
         document.getElementById('monthTitle').textContent = selectedYearMonth;
-        document.getElementById('yearTitle').textContent = `${selectedYear}年`;
+        document.getElementById('yearTitle').textContent = selectedYear + '年';
 
         const recordArray = [];
         for (let key in rawData) {
@@ -289,75 +147,126 @@
         if (recordArray.length === 0) {
             recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">暂无云端记账记录</td></tr>';
         } else {
+            // 按日期倒序排列
             recordArray.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             recordArray.forEach((item) => {
-                const amount = parseFloat(item.amount);
-                const itemDate = item.date; 
+                const amount = parseFloat(item.amount) || 0;
+                const itemDate = item.date || ""; 
                 const itemYearMonth = itemDate.substring(0, 7);
                 const itemYear = itemDate.substring(0, 4);
 
+                // 全局总额：无条件累加所有项，不受筛选条件限制
                 grandTotal += amount;
+
+                // 按选中的年月累加
                 if (itemYearMonth === selectedYearMonth) monthTotal += amount;
                 if (itemYear === selectedYear) yearTotal += amount;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${itemDate}</td>
-                    <td>${escapeHtml(item.desc)}</td>
-                    <td class="amount-col">¥ ${amount.toFixed(2)}</td>
-                    <td class="action-col">
-                        <button class="delete-btn" onclick="deleteRecord('${item.id}')">删除</button>
-                    </td>
-                `;
-                recordList.appendChild(tr);
+                // 列表只展示当前选定月份的数据
+                if (itemYearMonth === selectedYearMonth) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${itemDate}</td>
+                        <td>${escapeHtml(item.desc || '')}</td>
+                        <td class="amount-col">¥ ${amount.toFixed(2)}</td>
+                        <td class="action-col">
+                            <button class="delete-btn" onclick="deleteRecord('${item.id}')">删除</button>
+                        </td>
+                    `;
+                    recordList.appendChild(tr);
+                }
             });
+
+            if (recordList.children.length === 0) {
+                recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">当月暂无记账记录</td></tr>';
+            }
         }
 
+        // 渲染三个汇总卡片
         document.getElementById('totalAmount').textContent = grandTotal.toFixed(2);
         document.getElementById('monthAmount').textContent = monthTotal.toFixed(2);
         document.getElementById('yearAmount').textContent = yearTotal.toFixed(2);
     }
 
-    function escapeHtml(text) {
-        return text.replace(/[&<>"']/g, (m) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-        }[m]));
+    // 4. 新增记账（安全使用 push 追加，防覆盖）
+    function addRecord() {
+        const date = dateInput.value;
+        const desc = document.getElementById('descInput').value.trim();
+        const amount = parseFloat(document.getElementById('amountInput').value);
+
+        if (!date || !desc || isNaN(amount) || amount <= 0) {
+            alert('请填写正确的日期、说明和金额！');
+            return;
+        }
+
+        // 使用 push 生成独立节点
+        recordsRef.push({
+            date: date,
+            desc: desc,
+            amount: amount,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            document.getElementById('descInput').value = '';
+            document.getElementById('amountInput').value = '';
+        }).catch((error) => {
+            alert('保存失败: ' + error.message);
+        });
     }
 
-    recordForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const newRecord = {
-            date: dateInput.value,
-            desc: descInput.value.trim(),
-            amount: parseFloat(amountInput.value)
-        };
+    // 5. 删除单条记账
+    function deleteRecord(id) {
+        if (confirm('确定要删除这笔记录吗？')) {
+            db.ref('accounting_records/' + id).remove();
+        }
+    }
 
-        recordsRef.push(newRecord);
+    // 6. 检查本地旧数据
+    function checkLocalStorage() {
+        const localData = localStorage.getItem('my_accounting_data');
+        if (localData) {
+            try {
+                const records = JSON.parse(localData);
+                if (Array.isArray(records) && records.length > 0) {
+                    document.getElementById('syncNotice').style.display = 'block';
+                }
+            } catch (e) {}
+        }
+    }
 
-        descInput.value = '';
-        amountInput.value = '';
-        dateInput.value = new Date().toISOString().split('T')[0];
-    });
+    // 7. 一键增量迁移旧数据（安全异步追加）
+    function syncLocalDataToCloud() {
+        const localData = localStorage.getItem('my_accounting_data');
+        if (!localData) return;
 
-    window.deleteRecord = function(id) {
-        recordsRef.child(id).remove();
-    };
+        try {
+            const records = JSON.parse(localData);
+            if (Array.isArray(records) && records.length > 0) {
+                // 使用 Promise.all 确保所有数据全部 push 成功
+                const promises = records.map(item => recordsRef.push({
+                    date: item.date,
+                    desc: item.desc,
+                    amount: parseFloat(item.amount) || 0,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                }));
 
-    window.migrateLocalData = function() {
-        if (!confirm("确定要将本机的旧记账数据一次性导入云端吗？")) return;
-        
-        const localRecords = JSON.parse(localStorage.getItem('accounting_records')) || [];
-        localRecords.forEach((record) => {
-            recordsRef.push(record);
-        });
+                Promise.all(promises).then(() => {
+                    localStorage.removeItem('my_accounting_data');
+                    document.getElementById('syncNotice').style.display = 'none';
+                    alert('旧数据已安全同步至云端！');
+                }).catch(err => {
+                    alert('同步出错，请重试: ' + err.message);
+                });
+            }
+        } catch (e) {
+            alert('解析本地数据失败');
+        }
+    }
 
-        localStorage.removeItem('accounting_records');
-        migrateBtn.style.display = 'none';
-        alert("旧数据已成功导入云端！");
-    };
+    // 辅助转义函数
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 </script>
-
 </body>
 </html>
