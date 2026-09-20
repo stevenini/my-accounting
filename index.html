@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>极简云记账</title>
-    <!-- 引入稳定版 Firebase Web SDK v8 -->
+    <!-- 引入 Firebase Web SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -85,7 +85,7 @@
 </div>
 
 <script>
-    // 字符转义工具函数
+    // 字符转义函数
     function escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -95,17 +95,21 @@
             .replace(/"/g, "&quot;");
     }
 
-    // 1. 初始化 Firebase (v8 语法)
-   const firebaseConfig = {
-  apiKey: "AIzaSyBiF_nX1y87y2ItH0EblBLL9j5BOlOQOkk",
-  authDomain: "my-accounting-6e9fe.firebaseapp.com",
-  databaseURL: "https://my-accounting-6e9fe-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "my-accounting-6e9fe",
-  storageBucket: "my-accounting-6e9fe.firebasestorage.app",
-  messagingSenderId: "157174952439",
-  appId: "1:157174952439:web:7d3a445957af857f647ef2",
-  measurementId: "G-9WGWV6F974"
-};
+    // 1. 初始化 Firebase (全量精准配置)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBiF_nX1y87y2ItH0EblBLL9j5BOlOQOkk",
+        authDomain: "my-accounting-6e9fe.firebaseapp.com",
+        databaseURL: "https://my-accounting-6e9fe-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "my-accounting-6e9fe",
+        storageBucket: "my-accounting-6e9fe.firebasestorage.app",
+        messagingSenderId: "157174952439",
+        appId: "1:157174952439:web:7d3a445957af857f647ef2",
+        measurementId: "G-9WGWV6F974"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
 
     const db = firebase.database();
     // 绑定数据库根节点
@@ -121,18 +125,18 @@
     dateInput.value = today;
     monthPicker.value = today.substring(0, 7);
 
-    // 2. 监听云端变动
+    // 2. 监听云端数据
     recordsRef.on('value', (snapshot) => {
         rawData = snapshot.val() || {};
         render();
     }, (error) => {
         console.error("读取数据库失败:", error);
-        recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">数据加载失败，请检查网络权限</td></tr>';
+        recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">数据加载失败，请检查网络或权限限制</td></tr>';
     });
 
     monthPicker.addEventListener('change', render);
 
-    // 3. 渲染页面逻辑
+    // 3. 渲染逻辑
     function render() {
         recordList.innerHTML = '';
         
@@ -148,7 +152,6 @@
 
         const recordArray = [];
         for (let key in rawData) {
-            // 过滤符合记账格式的有效节点
             if (typeof rawData[key] === 'object' && rawData[key] !== null && rawData[key].amount) {
                 recordArray.push({
                     id: key,
@@ -160,7 +163,6 @@
         if (recordArray.length === 0) {
             recordList.innerHTML = '<tr><td colspan="4" class="empty-tip">暂无云端记账记录</td></tr>';
         } else {
-            // 按日期倒序，同日期按创建时间倒序
             recordArray.sort((a, b) => {
                 const dateDiff = new Date(b.date) - new Date(a.date);
                 if (dateDiff !== 0) return dateDiff;
@@ -173,7 +175,6 @@
                 const itemYearMonth = itemDate.substring(0, 7);
                 const itemYear = itemDate.substring(0, 4);
 
-                // 无条件统计全量总额
                 grandTotal += amount;
 
                 if (itemYearMonth === selectedYearMonth) monthTotal += amount;
@@ -203,7 +204,7 @@
         document.getElementById('yearAmount').textContent = yearTotal.toFixed(2);
     }
 
-    // 4. 新增记录（安全追加）
+    // 4. 新增记录
     function addRecord() {
         const date = dateInput.value;
         const desc = document.getElementById('descInput').value.trim();
